@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react"
 
 import { apiFetch } from "~lib/api"
 
+import CurrentJob from "./CurrentJob"
 import SavedJobs from "./SavedJobs"
 
 interface StatusCounts {
@@ -24,10 +25,11 @@ export default function Dashboard({ onAuthError }: Props) {
     offered: 0,
     rejected: 0
   })
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     fetchCounts()
-  }, [])
+  }, [refreshKey])
 
   async function fetchCounts() {
     try {
@@ -60,7 +62,9 @@ export default function Dashboard({ onAuthError }: Props) {
   }
 
   return (
-    <div className="dashboard">
+    <div>
+      <CurrentJob onSaved={() => setRefreshKey((k) => k + 1)} />
+      <div className="dashboard">
       <div className="status-cards">
         <div className="status-card saved">
           <span className="count">{counts.saved}</span>
@@ -85,7 +89,8 @@ export default function Dashboard({ onAuthError }: Props) {
       </div>
 
       <h3>Recent Jobs</h3>
-      <SavedJobs onAuthError={onAuthError} />
+      <SavedJobs key={refreshKey} onAuthError={onAuthError} />
+      </div>
     </div>
   )
 }

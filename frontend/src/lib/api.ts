@@ -1,3 +1,5 @@
+import type { Job, JobStatus } from "@/types/job"
+
 const API_BASE_URL = "http://localhost:3000/api"
 
 function getCookie(name: string): string | null {
@@ -124,4 +126,26 @@ export async function verifyToken() {
 
   const { data } = await res.json()
   return data.user
+}
+
+export async function fetchJobs(): Promise<Job[]> {
+  const res = await apiFetch("/jobs")
+  if (!res.ok) throw new Error("Failed to fetch jobs")
+  const { data } = await res.json()
+  return data
+}
+
+export async function updateJobStatus(id: number, status: JobStatus): Promise<Job> {
+  const res = await apiFetch(`/jobs/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  })
+  if (!res.ok) throw new Error("Failed to update status")
+  const { data } = await res.json()
+  return data
+}
+
+export async function deleteJob(id: number): Promise<void> {
+  const res = await apiFetch(`/jobs/${id}`, { method: "DELETE" })
+  if (!res.ok) throw new Error("Failed to delete job")
 }

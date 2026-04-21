@@ -1,5 +1,7 @@
 import { API_BASE_URL } from "~config"
 
+import type { ScrapedJob } from "./scrapers/types"
+
 const WEB_APP_URL = "http://localhost:5173"
 
 interface TokenData {
@@ -93,6 +95,29 @@ export async function verifyToken(): Promise<boolean> {
     return res.ok
   } catch {
     return false
+  }
+}
+
+export async function saveJob(
+  job: ScrapedJob
+): Promise<{ success: boolean; duplicate?: boolean; error?: string }> {
+  try {
+    const res = await apiFetch("/jobs", {
+      method: "POST",
+      body: JSON.stringify(job)
+    })
+
+    if (res.status === 409) return { success: false, duplicate: true }
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: "Failed to save" }))
+      return { success: false, error }
+    }
+    return { success: true }
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Unknown error"
+    }
   }
 }
 

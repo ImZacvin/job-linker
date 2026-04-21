@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router"
 
 import ProtectedRoute from "@/components/ProtectedRoute"
+import { Toaster } from "@/components/ui/sonner"
 import { AuthProvider } from "@/context/AuthContext"
 import Dashboard from "@/pages/Dashboard"
 import Login from "@/pages/Login"
@@ -23,6 +24,7 @@ function App() {
           />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
+        <Toaster />
       </AuthProvider>
     </BrowserRouter>
   )
