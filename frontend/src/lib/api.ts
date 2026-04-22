@@ -1,4 +1,5 @@
 import type { Job, JobStatus } from "@/types/job"
+import type { Cv, JobMatch } from "@/types/match"
 
 const API_BASE_URL = "http://localhost:3000/api"
 
@@ -148,4 +149,51 @@ export async function updateJobStatus(id: number, status: JobStatus): Promise<Jo
 export async function deleteJob(id: number): Promise<void> {
   const res = await apiFetch(`/jobs/${id}`, { method: "DELETE" })
   if (!res.ok) throw new Error("Failed to delete job")
+}
+
+export async function fetchActiveCv(): Promise<Cv | null> {
+  const res = await apiFetch("/cv")
+  if (!res.ok) throw new Error("Failed to fetch CV")
+  const { data } = await res.json()
+  return data
+}
+
+export async function uploadCv(file: File): Promise<Cv> {
+  const form = new FormData()
+  form.append("cv", file)
+
+  const token = getAccessToken()
+  const headers: Record<string, string> = {}
+  if (token) headers["Authorization"] = `Bearer ${token}`
+
+  // Can't use apiFetch: FormData must set its own Content-Type boundary.
+  let res = await fetch(`${API_BASE_URL}/cv`, { method: "POST", body: form, headers })
+  if (res.status === 401) {
+    const newToken = await tryRefresh()
+    if (newToken) {
+      headers["Authorization"] = `Bearer ${newToken}`
+      res = await fetch(`${API_BASE_URL}/cv`, { method: "POST", body: form, headers })
+    }
+  }
+  if (!res.ok) {
+    const { error } = await res.json().catch(() => ({ error: "Upload failed" }))
+    throw new Error(error || "Upload failed")
+  }
+  const { data } = await res.json()
+  return data
+}
+
+export async function fetchJobMatch(jobId: number): Promise<JobMatch | null> {
+  const res = await apiFetch(`/jobs/${jobId}/match`)
+  if (!res.ok) throw new Error("Failed to fetch match")
+  const { data } = await res.json()
+  return data
+}
+
+export async function recomputeJobMatch(jobId: number): Promise<void> {
+  const res = await apiFetch(`/jobs/${jobId}/match/recompute`, { method: "POST" })
+  if (!res.ok) {
+    const { error } = await res.json().catch(() => ({ error: "Recompute failed" }))
+    throw new Error(error || "Recompute failed")
+  }
 }

@@ -5,6 +5,8 @@ import env from './config/env.js';
 import authRoutes from './modules/auth/auth.route.js';
 import userRoutes from './modules/user/user.route.js';
 import jobRoutes from './modules/job/job.route.js';
+import cvRoutes from './modules/cv/cv.route.js';
+import matchRoutes from './modules/matching/match.route.js';
 import errorHandler from './middleware/error.middleware.js';
 
 const app = express();
@@ -19,6 +21,8 @@ app.use('/api/auth', authRoutes);
 // ─── Private Routes ─────────────────────────────────────────────
 app.use('/api/users', userRoutes);
 app.use('/api/jobs', jobRoutes);
+app.use('/api/jobs', matchRoutes);   // GET /api/jobs/:id/match, POST /api/jobs/:id/match/recompute
+app.use('/api/cv', cvRoutes);
 
 // ─── Health Check ───────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

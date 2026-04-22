@@ -21,6 +21,11 @@ export interface Job {
   raw_data: unknown
   created_at: string
   updated_at: string
+  match_score?: number | null
+  match_status?: "pending" | "done" | "failed" | null
+  match_error?: string | null
+  embedding_status?: "pending" | "done" | "failed" | null
+  embedding_error?: string | null
 }
 
 export const JOB_STATUSES: { value: JobStatus; label: string }[] = [

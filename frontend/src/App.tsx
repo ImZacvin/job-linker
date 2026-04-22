@@ -3,8 +3,10 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router"
 import ProtectedRoute from "@/components/ProtectedRoute"
 import { Toaster } from "@/components/ui/sonner"
 import { AuthProvider } from "@/context/AuthContext"
+import CvUpload from "@/pages/CvUpload"
 import Dashboard from "@/pages/Dashboard"
 import Login from "@/pages/Login"
+import Recommended from "@/pages/Recommended"
 import Register from "@/pages/Register"
 
 function App() {
@@ -19,6 +21,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cv"
+            element={
+              <ProtectedRoute>
+                <CvUpload />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/recommended"
+            element={
+              <ProtectedRoute>
+                <Recommended />
               </ProtectedRoute>
             }
           />

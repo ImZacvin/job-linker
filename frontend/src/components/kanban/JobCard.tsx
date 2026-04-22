@@ -3,11 +3,13 @@ import { CSS } from "@dnd-kit/utilities"
 import { Building2, MapPin } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
+import MatchBadge from "@/components/kanban/MatchBadge"
 import type { Job } from "@/types/job"
 
 interface JobCardProps {
   job: Job
   onClick: () => void
+  hasActiveCv?: boolean
 }
 
 const platformColors: Record<string, string> = {
@@ -16,7 +18,7 @@ const platformColors: Record<string, string> = {
   glints: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
 }
 
-export default function JobCard({ job, onClick }: JobCardProps) {
+export default function JobCard({ job, onClick, hasActiveCv = false }: JobCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: job.id,
     data: { type: "job", job },
@@ -60,6 +62,14 @@ export default function JobCard({ job, onClick }: JobCardProps) {
           <span className="truncate">{job.location}</span>
         </div>
       )}
+      <div className="mt-2">
+        <MatchBadge
+          score={job.match_score}
+          status={job.match_status}
+          hasActiveCv={hasActiveCv}
+          embeddingStatus={job.embedding_status}
+        />
+      </div>
     </div>
   )
 }

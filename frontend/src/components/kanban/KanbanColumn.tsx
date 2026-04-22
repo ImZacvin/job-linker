@@ -9,9 +9,10 @@ interface KanbanColumnProps {
   title: string
   jobs: Job[]
   onJobClick: (job: Job) => void
+  hasActiveCv: boolean
 }
 
-export default function KanbanColumn({ status, title, jobs, onJobClick }: KanbanColumnProps) {
+export default function KanbanColumn({ status, title, jobs, onJobClick, hasActiveCv }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: status,
     data: { type: "column", status },
@@ -32,7 +33,12 @@ export default function KanbanColumn({ status, title, jobs, onJobClick }: Kanban
         }`}>
         <SortableContext items={jobs.map((j) => j.id)} strategy={verticalListSortingStrategy}>
           {jobs.map((job) => (
-            <JobCard key={job.id} job={job} onClick={() => onJobClick(job)} />
+            <JobCard
+              key={job.id}
+              job={job}
+              onClick={() => onJobClick(job)}
+              hasActiveCv={hasActiveCv}
+            />
           ))}
         </SortableContext>
         {jobs.length === 0 && (

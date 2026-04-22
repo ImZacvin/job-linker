@@ -1,4 +1,13 @@
 import jobModel from './job.model.js';
+import { enqueueEmbedJob, enqueueEnrichJob } from '../../queues/index.js';
+
+const MIN_DESCRIPTION_LENGTH_FOR_EMBED = 200;
+
+function shouldEnrich(platform, description, url) {
+  if (!url) return false;
+  const len = (description || '').trim().length;
+  return len < MIN_DESCRIPTION_LENGTH_FOR_EMBED;
+}
 
 class JobService {
   async getJobsByUser(userId, filters) {
@@ -26,7 +35,7 @@ class JobService {
       }
     }
 
-    return jobModel.create({
+    const created = await jobModel.create({
       user_id: userId,
       platform: data.platform,
       external_id: data.external_id || null,
@@ -34,6 +43,7 @@ class JobService {
       company_name: data.company_name || null,
       location: data.location || null,
       description: data.description || null,
+      description_source: 'extension',
       salary_min: data.salary_min || null,
       salary_max: data.salary_max || null,
       salary_currency: data.salary_currency || null,
@@ -45,6 +55,23 @@ class JobService {
       created_at: new Date(),
       updated_at: new Date(),
     });
+
+    // Decide: if description is missing/short and we have a URL, try server-side
+    // enrichment first; enrichJob will enqueue embedJob when it finishes either way.
+    // Otherwise, go straight to embedding.
+    const needsEnrichment = shouldEnrich(created.platform, created.description, created.url);
+    const enqueue = needsEnrichment
+      ? enqueueEnrichJob({ jobId: created.id, userId })
+      : enqueueEmbedJob({ jobId: created.id, userId });
+
+    enqueue.catch((err) => {
+      console.error(
+        `Failed to enqueue ${needsEnrichment ? 'enrich-job' : 'embed-job'}:`,
+        err.message
+      );
+    });
+
+    return created;
   }
 
   async saveBulkJobs(userId, jobs) {

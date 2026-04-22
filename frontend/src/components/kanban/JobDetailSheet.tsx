@@ -16,6 +16,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import JobMatchPanel from "@/components/kanban/JobMatchPanel"
 import { deleteJob as apiDeleteJob, updateJobStatus } from "@/lib/api"
 import { JOB_STATUSES, type Job, type JobStatus } from "@/types/job"
 
@@ -112,6 +113,11 @@ export default function JobDetailSheet({
               <Trash2 className="h-3 w-3 mr-1" />
               Delete
             </Button>
+          </div>
+
+          <div className="border rounded-lg p-3 bg-muted/20">
+            <p className="text-xs font-medium text-muted-foreground mb-2">Match</p>
+            <JobMatchPanel jobId={job.id} />
           </div>
 
           {job.employment_type && (
