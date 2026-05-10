@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "react-router"
-import { ArrowLeft, ArrowRight, Building2, ExternalLink, MapPin, Sparkles, Upload } from "lucide-react"
+import { ArrowLeft, ArrowRight, Building2, ExternalLink, MapPin, RefreshCw, Sparkles, Upload } from "lucide-react"
 import { toast } from "sonner"
 
 import JobDetailSheet from "@/components/kanban/JobDetailSheet"
@@ -12,7 +12,14 @@ import type { Job, JobStatus } from "@/types/job"
 
 const POLL_INTERVAL_MS = 5000
 
-function rank(jobs: Job[]): Job[] {
+type SortMode = "bestFit" | "newest"
+
+function rank(jobs: Job[], mode: SortMode): Job[] {
+  if (mode === "newest") {
+    return [...jobs].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
+  }
   return [...jobs].sort((a, b) => {
     const as = a.match_score ?? -Infinity
     const bs = b.match_score ?? -Infinity
@@ -33,40 +40,53 @@ export default function Recommended() {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Job | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [sortMode, setSortMode] = useState<SortMode>("bestFit")
+  const [refreshing, setRefreshing] = useState(false)
+  const cancelledRef = useRef(false)
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    let pollTimer: ReturnType<typeof setTimeout> | null = null
+  const load = useCallback(async (initial: boolean) => {
+    try {
+      const [cv, fresh] = await Promise.all([fetchActiveCv(), fetchJobs()])
+      if (cancelledRef.current) return
+      setHasActiveCv(Boolean(cv))
+      setJobs(fresh)
+      if (initial) setLoading(false)
 
-    async function load(initial: boolean) {
-      try {
-        const [cv, fresh] = await Promise.all([fetchActiveCv(), fetchJobs()])
-        if (cancelled) return
-        setHasActiveCv(Boolean(cv))
-        setJobs(fresh)
-        if (initial) setLoading(false)
-
-        const anyPending =
-          cv && fresh.some((j) => j.match_status === "pending" || j.match_status == null)
-        if (anyPending) {
-          pollTimer = setTimeout(() => load(false), POLL_INTERVAL_MS)
-        }
-      } catch {
-        if (!cancelled) {
-          toast.error("Failed to load recommendations")
-          if (initial) setLoading(false)
-        }
+      const anyPending =
+        cv && fresh.some((j) => j.match_status === "pending" || j.match_status == null)
+      if (anyPending) {
+        if (pollTimerRef.current) clearTimeout(pollTimerRef.current)
+        pollTimerRef.current = setTimeout(() => load(false), POLL_INTERVAL_MS)
       }
-    }
-
-    load(true)
-    return () => {
-      cancelled = true
-      if (pollTimer) clearTimeout(pollTimer)
+    } catch {
+      if (!cancelledRef.current) {
+        toast.error("Failed to load recommendations")
+        if (initial) setLoading(false)
+      }
     }
   }, [])
 
-  const ranked = useMemo(() => rank(jobs), [jobs])
+  useEffect(() => {
+    cancelledRef.current = false
+    load(true)
+    return () => {
+      cancelledRef.current = true
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current)
+    }
+  }, [load])
+
+  async function handleRefresh() {
+    setRefreshing(true)
+    try {
+      await load(false)
+      toast.success("Refreshed")
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  const ranked = useMemo(() => rank(jobs, sortMode), [jobs, sortMode])
 
   async function moveToApplied(jobId: number) {
     const prev = jobs
@@ -114,6 +134,39 @@ export default function Recommended() {
           <p className="text-sm text-muted-foreground">
             Ranked by match score. Click a row to see the skill gap, or jump straight to the listing.
           </p>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="inline-flex rounded-md border p-0.5">
+            <button
+              type="button"
+              onClick={() => setSortMode("bestFit")}
+              className={`px-3 py-1 text-xs rounded-sm transition-colors ${
+                sortMode === "bestFit"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}>
+              Best fit
+            </button>
+            <button
+              type="button"
+              onClick={() => setSortMode("newest")}
+              className={`px-3 py-1 text-xs rounded-sm transition-colors ${
+                sortMode === "newest"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}>
+              Newest
+            </button>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={refreshing || loading}>
+            <RefreshCw className={`h-3 w-3 mr-1 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
         </div>
 
         {loading ? (

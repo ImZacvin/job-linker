@@ -25,6 +25,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', cvController.getActiveCv);
+router.get('/:id/file', cvController.getCvFile);
 router.post('/', upload.single('cv'), cvController.uploadCv);
 router.delete('/:id', cvController.deleteCv);
 

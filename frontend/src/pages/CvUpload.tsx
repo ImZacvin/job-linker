@@ -1,10 +1,17 @@
 import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router"
-import { ArrowLeft, CheckCircle2, FileText, Loader2, Upload } from "lucide-react"
+import { ArrowLeft, CheckCircle2, Download, FileText, Loader2, Upload } from "lucide-react"
 import { toast } from "sonner"
 
-import { Button } from "@/components/ui/button"
-import { fetchActiveCv, uploadCv } from "@/lib/api"
+import { Button, buttonVariants } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { fetchActiveCv, fetchCvFile, uploadCv } from "@/lib/api"
 import type { Cv } from "@/types/match"
 
 const ACCEPT = ".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -14,9 +21,42 @@ export default function CvUpload() {
   const [cv, setCv] = useState<Cv | null>(null)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastAnnouncedStatusRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
+
+  async function openPreview() {
+    if (!cv) return
+    setPreviewOpen(true)
+    setPreviewError(null)
+    if (previewUrl) {
+      // Already loaded for this CV — reuse.
+      return
+    }
+    setPreviewLoading(true)
+    try {
+      const blob = await fetchCvFile(cv.id)
+      setPreviewUrl(URL.createObjectURL(blob))
+    } catch (err) {
+      setPreviewError(err instanceof Error ? err.message : "Failed to load file")
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
+
+  function handlePreviewOpenChange(open: boolean) {
+    setPreviewOpen(open)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -66,6 +106,11 @@ export default function CvUpload() {
     try {
       const next = await uploadCv(file)
       setCv(next)
+      // Invalidate cached preview — it points to the previous file's bytes.
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+        setPreviewUrl(null)
+      }
       lastAnnouncedStatusRef.current = next.embedding_status
       toast.success("CV uploaded — embedding in progress…")
 
@@ -126,12 +171,16 @@ export default function CvUpload() {
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : cv ? (
-          <div className="border rounded-lg p-4 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={openPreview}
+            className="border rounded-lg p-4 flex items-center gap-3 text-left hover:border-foreground/40 hover:bg-muted/30 transition-colors">
             <FileText className="h-8 w-8 text-muted-foreground shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="font-medium truncate">{cv.filename}</p>
               <p className="text-xs text-muted-foreground">
                 {cv.text_length.toLocaleString()} chars · uploaded {new Date(cv.uploaded_at).toLocaleDateString()}
+                <span className="ml-1">· click to preview</span>
               </p>
               <div className="mt-1 flex items-center gap-1.5 text-xs">
                 {status === "pending" && (
@@ -151,7 +200,7 @@ export default function CvUpload() {
                 )}
               </div>
             </div>
-          </div>
+          </button>
         ) : (
           <p className="text-sm text-muted-foreground">No CV uploaded yet.</p>
         )}
@@ -176,6 +225,51 @@ export default function CvUpload() {
           </Button>
         </div>
       </main>
+
+      <Dialog open={previewOpen} onOpenChange={handlePreviewOpenChange}>
+        <DialogContent className="max-w-4xl h-[85vh] p-0 overflow-hidden flex flex-col">
+          <DialogHeader className="p-4 pb-2 border-b">
+            <DialogTitle className="truncate">{cv?.filename ?? "CV"}</DialogTitle>
+            <DialogDescription>Preview of your uploaded CV.</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 bg-muted/20">
+            {previewLoading && (
+              <div className="h-full flex items-center justify-center text-sm text-muted-foreground gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading file…
+              </div>
+            )}
+            {previewError && !previewLoading && (
+              <div className="h-full flex items-center justify-center p-6 text-sm text-red-700">
+                {previewError}
+              </div>
+            )}
+            {!previewLoading && !previewError && previewUrl && cv && (
+              cv.mime_type === "application/pdf" ? (
+                <iframe
+                  src={previewUrl}
+                  title={cv.filename}
+                  className="h-full w-full border-0"
+                />
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center gap-3 p-6 text-center">
+                  <FileText className="h-10 w-10 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground max-w-sm">
+                    Inline preview is only supported for PDF files. Download to view this {cv.mime_type.includes("word") ? "DOCX" : "file"}.
+                  </p>
+                  <a
+                    href={previewUrl}
+                    download={cv.filename}
+                    className={buttonVariants({ variant: "default", size: "default" })}>
+                    <Download className="h-4 w-4 mr-1" />
+                    Download
+                  </a>
+                </div>
+              )
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

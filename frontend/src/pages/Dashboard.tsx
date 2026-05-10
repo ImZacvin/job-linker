@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "react-router"
 import { FileText, Sparkles } from "lucide-react"
 import { toast } from "sonner"
@@ -54,36 +54,43 @@ export default function Dashboard() {
     }
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
+  const jobsCancelledRef = useRef(false)
 
-    async function loadJobs(initial: boolean) {
+  const loadJobs = useCallback(
+    async (initial: boolean) => {
       try {
         const fresh = await fetchJobs()
-        if (cancelled) return
+        if (jobsCancelledRef.current) return
         setJobs(fresh)
         if (initial) setJobsLoading(false)
 
         const anyPending =
           hasActiveCv &&
           fresh.some((j) => j.match_status === "pending" || j.match_status == null)
+        if (jobsTimerRef.current) clearTimeout(jobsTimerRef.current)
         if (anyPending) {
           jobsTimerRef.current = setTimeout(() => loadJobs(false), JOBS_POLL_MS)
         }
       } catch {
-        if (!cancelled) {
+        if (!jobsCancelledRef.current) {
           toast.error("Failed to load jobs")
           if (initial) setJobsLoading(false)
         }
       }
-    }
+    },
+    [hasActiveCv]
+  )
 
+  useEffect(() => {
+    jobsCancelledRef.current = false
     loadJobs(true)
     return () => {
-      cancelled = true
+      jobsCancelledRef.current = true
       if (jobsTimerRef.current) clearTimeout(jobsTimerRef.current)
     }
-  }, [hasActiveCv])
+  }, [loadJobs])
+
+  const refreshJobs = useCallback(() => loadJobs(false), [loadJobs])
 
   const matchedCount = useMemo(() => {
     if (threshold === 0) return jobs.length
@@ -145,6 +152,7 @@ export default function Dashboard() {
             onJobsChange={setJobs}
             hasActiveCv={hasActiveCv}
             threshold={threshold}
+            onRefresh={refreshJobs}
           />
         )}
       </main>

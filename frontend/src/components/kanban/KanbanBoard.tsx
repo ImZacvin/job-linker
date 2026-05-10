@@ -8,7 +8,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core"
 import { useMemo, useState } from "react"
-import { Loader2 } from "lucide-react"
+import { Loader2, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 
 import JobCard from "@/components/kanban/JobCard"
@@ -25,6 +25,7 @@ interface KanbanBoardProps {
   onJobsChange: (updater: (prev: Job[]) => Job[]) => void
   hasActiveCv: boolean
   threshold: number
+  onRefresh?: () => Promise<void> | void
 }
 
 function sortJobs(jobs: Job[], mode: SortMode): Job[] {
@@ -46,11 +47,26 @@ export default function KanbanBoard({
   onJobsChange,
   hasActiveCv,
   threshold,
+  onRefresh,
 }: KanbanBoardProps) {
   const [activeJob, setActiveJob] = useState<Job | null>(null)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sortMode, setSortMode] = useState<SortMode>("newest")
+  const [refreshing, setRefreshing] = useState(false)
+
+  async function handleRefresh() {
+    if (!onRefresh || refreshing) return
+    setRefreshing(true)
+    try {
+      await onRefresh()
+      toast.success("Refreshed")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Refresh failed")
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -150,12 +166,25 @@ export default function KanbanBoard({
           </div>
         </div>
 
-        {hasActiveCv && pendingCount > 0 && (
-          <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            Matching {doneCount} of {doneCount + pendingCount} jobs…
-          </div>
-        )}
+        <div className="flex items-center gap-3 ml-auto">
+          {hasActiveCv && pendingCount > 0 && (
+            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Matching {doneCount} of {doneCount + pendingCount} jobs…
+            </div>
+          )}
+          {onRefresh && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleRefresh}
+              disabled={refreshing}>
+              <RefreshCw className={`h-3 w-3 mr-1 ${refreshing ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          )}
+        </div>
       </div>
 
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>

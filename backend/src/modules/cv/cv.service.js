@@ -24,6 +24,7 @@ class CvService {
       filename: file.originalname,
       mime_type: file.mimetype,
       parsed_text: text,
+      file_bytes: file.buffer,
       is_active: true,
       embedding_status: 'pending',
     });
@@ -39,6 +40,17 @@ class CvService {
       throw { status: 404, message: 'CV not found' };
     }
     return cvModel.delete(cvId);
+  }
+
+  async getCvFile(userId, cvId) {
+    const cv = await cvModel.findFileById(cvId);
+    if (!cv || cv.user_id !== userId) {
+      throw { status: 404, message: 'CV not found' };
+    }
+    if (!cv.file_bytes) {
+      throw { status: 404, message: 'File bytes not stored — re-upload this CV to enable preview' };
+    }
+    return cv;
   }
 }
 

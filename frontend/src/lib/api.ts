@@ -183,6 +183,15 @@ export async function uploadCv(file: File): Promise<Cv> {
   return data
 }
 
+export async function fetchCvFile(cvId: number): Promise<Blob> {
+  const res = await apiFetch(`/cv/${cvId}/file`)
+  if (!res.ok) {
+    const text = await res.text().catch(() => "")
+    throw new Error(text || "Failed to load CV file")
+  }
+  return res.blob()
+}
+
 export async function fetchJobMatch(jobId: number): Promise<JobMatch | null> {
   const res = await apiFetch(`/jobs/${jobId}/match`)
   if (!res.ok) throw new Error("Failed to fetch match")
