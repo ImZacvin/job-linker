@@ -1,7 +1,7 @@
 import type { Job, JobStatus } from "@/types/job"
 import type { Cv, JobMatch } from "@/types/match"
 
-const API_BASE_URL = "http://localhost:3000/api"
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api"
 
 function getCookie(name: string): string | null {
   const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
@@ -51,7 +51,12 @@ async function tryRefresh(): Promise<string | null> {
       return null
     }
 
-    const { data } = await res.json()
+    const body = await res.json()
+    const data = body?.data ?? body
+    if (!data?.accessToken) {
+      clearTokens()
+      return null
+    }
     setCookie("accessToken", data.accessToken, 1)
     return data.accessToken
   } catch {
@@ -96,7 +101,11 @@ export async function login(email: string, password: string) {
     throw new Error(error || "Login failed")
   }
 
-  const { data } = await res.json()
+  const body = await res.json()
+  const data = body?.data ?? body
+  if (!data?.accessToken || !data?.refreshToken) {
+    throw new Error("Login response is missing tokens")
+  }
   setTokens(data.accessToken, data.refreshToken)
   return data.user
 }
@@ -113,7 +122,11 @@ export async function register(email: string, password: string, full_name: strin
     throw new Error(error || "Registration failed")
   }
 
-  const { data } = await res.json()
+  const body = await res.json()
+  const data = body?.data ?? body
+  if (!data?.accessToken || !data?.refreshToken) {
+    throw new Error("Registration response is missing tokens")
+  }
   setTokens(data.accessToken, data.refreshToken)
   return data.user
 }

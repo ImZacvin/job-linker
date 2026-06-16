@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { AuthProvider } from "@/context/AuthContext"
 import CvUpload from "@/pages/CvUpload"
 import Dashboard from "@/pages/Dashboard"
+import Extension from "@/pages/Extension"
 import Login from "@/pages/Login"
 import Recommended from "@/pages/Recommended"
 import Register from "@/pages/Register"
@@ -37,6 +38,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Recommended />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/extension"
+            element={
+              <ProtectedRoute>
+                <Extension />
               </ProtectedRoute>
             }
           />

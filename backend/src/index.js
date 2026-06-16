@@ -12,7 +12,15 @@ import errorHandler from './middleware/error.middleware.js';
 const app = express();
 
 // ─── Global Middleware ──────────────────────────────────────────
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',           // Dev
+    'https://cvranker.space',         // Production via Cloudflare Tunnel
+    /^moz-extension:\/\//,              // Firefox extension
+    /^chrome-extension:\/\//,           // Chrome extension
+  ],
+  credentials: true,
+}));
 app.use(express.json());
 
 // ─── Public Routes ──────────────────────────────────────────────

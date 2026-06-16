@@ -29,7 +29,8 @@
   "manifest": {
     "host_permissions": [
       "https://*/*",
-      "http://localhost/*"
+      "http://localhost/*",
+      "https://cvranker.space/*"
     ],
     "permissions": [
       "cookies",

@@ -30,7 +30,11 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
         throw new Error(error || "Login failed")
       }
 
-      const { data } = await res.json()
+      const body = await res.json()
+      const data = body?.data ?? body
+      if (!data?.accessToken || !data?.refreshToken) {
+        throw new Error("Login response is missing tokens")
+      }
       await setTokens({
         accessToken: data.accessToken,
         refreshToken: data.refreshToken

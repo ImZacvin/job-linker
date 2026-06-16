@@ -7,9 +7,11 @@ import CvSummaryCard from "@/components/dashboard/CvSummaryCard"
 import MatchThresholdCard, {
   type ThresholdValue,
 } from "@/components/dashboard/MatchThresholdCard"
+import ExtensionRequiredModal from "@/components/ExtensionRequiredModal"
 import KanbanBoard from "@/components/kanban/KanbanBoard"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/context/AuthContext"
+import { useExtensionInstalled } from "@/hooks/useExtensionInstalled"
 import { fetchActiveCv, fetchJobs } from "@/lib/api"
 import type { Job } from "@/types/job"
 import type { Cv } from "@/types/match"
@@ -19,6 +21,8 @@ const CV_POLL_MS = 3000
 
 export default function Dashboard() {
   const { user, logout } = useAuth()
+  const { checked: extensionChecked, installed: extensionInstalled } =
+    useExtensionInstalled()
   const [cv, setCv] = useState<Cv | null>(null)
   const [cvLoaded, setCvLoaded] = useState(false)
   const [jobs, setJobs] = useState<Job[]>([])
@@ -99,6 +103,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <ExtensionRequiredModal open={extensionChecked && !extensionInstalled} />
       <header className="border-b">
         <div className="flex items-center justify-between max-w-[1600px] mx-auto px-6 py-3">
           <h1 className="text-lg font-semibold">Job Linker</h1>

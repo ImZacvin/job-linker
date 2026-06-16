@@ -1,8 +1,6 @@
-import { API_BASE_URL } from "~config"
+import { API_BASE_URL, WEB_APP_URL } from "~config"
 
 import type { ScrapedJob } from "./scrapers/types"
-
-const WEB_APP_URL = "http://localhost:5173"
 
 interface TokenData {
   accessToken: string
@@ -41,8 +39,10 @@ async function tryRefresh(): Promise<string | null> {
 
     if (!res.ok) return null
 
-    const { data } = await res.json()
-    // Update the cookie with the new access token
+    const body = await res.json()
+    const data = body?.data ?? body
+    if (!data?.accessToken) return null
+
     await chrome.cookies.set({
       url: WEB_APP_URL,
       name: "accessToken",

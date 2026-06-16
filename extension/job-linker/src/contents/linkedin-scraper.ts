@@ -35,8 +35,7 @@ function findListContainer(): ParentNode {
   )
 }
 
-function scrapeList(): ScrapedJob[] {
-  const container = findListContainer()
+function scrapeNewVariant(container: ParentNode, seen: Set<string>): ScrapedJob[] {
   const cards = Array.from(
     container.querySelectorAll<HTMLElement>(
       '[componentkey^="job-card-component-ref-"][role="button"]'
@@ -44,11 +43,8 @@ function scrapeList(): ScrapedJob[] {
   )
 
   const jobs: ScrapedJob[] = []
-  const seen = new Set<string>()
-
   for (const card of cards) {
     const ck = card.getAttribute("componentkey") || ""
-    // componentkey looks like: job-card-component-ref-<numeric id>
     const idMatch = ck.match(/ref-(\d+)$/)
     if (!idMatch) continue
     const externalId = idMatch[1]
@@ -72,7 +68,7 @@ function scrapeList(): ScrapedJob[] {
       title,
       company_name,
       location,
-      description: null, // enrichment queue fetches from /jobs-guest/jobs/api/jobPosting/<id>
+      description: null,
       salary_min: null,
       salary_max: null,
       salary_currency: null,
@@ -83,6 +79,86 @@ function scrapeList(): ScrapedJob[] {
   }
 
   return jobs
+}
+
+function scrapeLegacyVariant(container: ParentNode, seen: Set<string>): ScrapedJob[] {
+  // Legacy LinkedIn DOM uses <li data-occludable-job-id> wrapping <div data-job-id class="job-card-container">
+  const cards = Array.from(
+    container.querySelectorAll<HTMLElement>(
+      "li[data-occludable-job-id], div[data-job-id].job-card-container"
+    )
+  )
+
+  const jobs: ScrapedJob[] = []
+  for (const card of cards) {
+    const externalId =
+      card.getAttribute("data-occludable-job-id") ||
+      card.getAttribute("data-job-id") ||
+      card.querySelector<HTMLElement>("[data-job-id]")?.getAttribute("data-job-id") ||
+      ""
+    if (!externalId || seen.has(externalId)) continue
+
+    const title =
+      firstText(card, [
+        ".artdeco-entity-lockup__title a span[aria-hidden='true']",
+        ".artdeco-entity-lockup__title a",
+        ".artdeco-entity-lockup__title",
+        "a.job-card-list__title--link span[aria-hidden='true']",
+        "a.job-card-list__title--link",
+        ".job-card-list__title",
+        "a[href*='/jobs/view/'] span[aria-hidden='true']",
+        "a[href*='/jobs/view/']"
+      ]) ||
+      normalize(
+        card
+          .querySelector<HTMLAnchorElement>('a[href*="/jobs/view/"]')
+          ?.getAttribute("aria-label")
+          ?.replace(/\s+with verification.*/i, "")
+      )
+    if (!title) continue
+
+    const company_name = firstText(card, [
+      ".artdeco-entity-lockup__subtitle",
+      ".job-card-container__primary-description",
+      ".job-card-container__company-name"
+    ])
+
+    const location = firstText(card, [
+      ".artdeco-entity-lockup__caption",
+      ".job-card-container__metadata-wrapper li",
+      ".job-card-container__metadata-item"
+    ])
+
+    const imageUrl =
+      card.querySelector<HTMLImageElement>("img")?.getAttribute("src") ?? null
+
+    seen.add(externalId)
+    jobs.push({
+      platform: "linkedin",
+      external_id: externalId,
+      title,
+      company_name,
+      location,
+      description: null,
+      salary_min: null,
+      salary_max: null,
+      salary_currency: null,
+      employment_type: null,
+      url: `https://www.linkedin.com/jobs/view/${externalId}`,
+      raw_data: { source: "list-occludable", needs_enrichment: true, image_url: imageUrl }
+    })
+  }
+
+  return jobs
+}
+
+function scrapeList(): ScrapedJob[] {
+  const container = findListContainer()
+  const seen = new Set<string>()
+
+  const newOnes = scrapeNewVariant(container, seen)
+  const legacyOnes = scrapeLegacyVariant(container, seen)
+  return [...newOnes, ...legacyOnes]
 }
 
 function scrapeDetailPage(): ScrapedJob[] {
