@@ -5,6 +5,16 @@ export function detectPlatform(url: string): JobPlatform | null {
   if (url.includes("seek.com") || url.includes("seek.co.id") || url.includes("seek.co.nz"))
     return "seek"
   if (url.includes("glints.com")) return "glints"
+  if (
+    url.includes("jobstreet.co.id") ||
+    url.includes("jobstreet.com.my") ||
+    url.includes("jobstreet.com.sg") ||
+    url.includes("jobstreet.com.ph") ||
+    url.includes("id.jobstreet.com") ||
+    url.includes("my.jobstreet.com") ||
+    (url.includes("jobstreet.com") && !url.includes("seek"))
+  )
+    return "jobstreet"
   return null
 }
 

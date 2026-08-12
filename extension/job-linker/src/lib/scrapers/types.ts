@@ -1,4 +1,4 @@
-export type JobPlatform = "linkedin" | "seek" | "glints"
+export type JobPlatform = "linkedin" | "seek" | "glints" | "jobstreet"
 
 export interface ScrapedJob {
   platform: JobPlatform

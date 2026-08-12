@@ -1,0 +1,7 @@
+tunnel: c9a2b305-51d5-42b7-bec3-aaeab4f7bf6d
+credentials-file: C:\Users\cdarm\.cloudflared\c9a2b305-51d5-42b7-bec3-aaeab4f7bf6d.json
+
+ingress:
+  - hostname: cvranker.space
+    service:  http://localhost:8081
+  - service: http_status:404
